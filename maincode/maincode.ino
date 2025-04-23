@@ -4,14 +4,14 @@
 #include <LoRa.h>
 
 // === GPS Setup ===
-static const int GPS_RX = 4, GPS_TX = 5;
+static const int GPS_RX = 15, GPS_TX = 4;
 SoftwareSerial gpsSerial(GPS_RX, GPS_TX);
 TinyGPSPlus gps;
 
 // === SIM800L Setup ===
-SoftwareSerial sim800l(16, 17);  // RX, TX
-const int button = 27;
-String phoneNumbers[] = { "+919370718105" };
+SoftwareSerial sim800l(16, 17);  // RX, TX for SIM800L
+const int button = 26;           // Emergency button pin
+String phoneNumbers[] = { "+919370718105" }; // Add more if needed
 int numNumbers = 1;
 
 // === LoRa Setup ===
@@ -40,7 +40,7 @@ void setup() {
 
   // === Initialize LoRa ===
   LoRa.setPins(ss, rst, dio0);
-  while (!LoRa.begin(865E6)) {
+  while (!LoRa.begin(856E6)) {
     Serial.print(".");
     delay(500);
   }
@@ -93,20 +93,23 @@ void loop() {
 
 // === Send GPS via SMS and LoRa ===
 void sendGPSLocation() {
+  String message;
+
   if (gpsHasFix) {
-    String message = "EMERGENCY! Location: http://maps.google.com/?q=";
+    message = "EMERGENCY! Location: http://maps.google.com/?q=";
     message += String(gps.location.lat(), 6);
     message += ",";
     message += String(gps.location.lng(), 6);
-
-    sendSMS(phoneNumbers[0], message);
-    sendLoRa(message);
   } else {
     Serial.println("No GPS fix available!");
-    String lostMsg = "GPS signal lost - no location available";
-    sendSMS(phoneNumbers[0], lostMsg);
-    sendLoRa(lostMsg);
+    message = "EMERGENCY! Location: http://maps.google.com/?q=18.525187,73.845484";
   }
+
+  // 1. Send via LoRa first
+  sendLoRa(message);
+
+  // 2. Send via SMS
+  sendSMS(phoneNumbers[0], message);
 }
 
 // === Send SMS with SIM800L ===
@@ -128,19 +131,23 @@ bool sendSMS(String number, String message) {
   return true;
 }
 
-// === Send message via LoRa ===
-void sendLoRa(String data) {
+  bool sendLoRa(String data) {
   Serial.print("Sending via LoRa: ");
   Serial.println(data);
   LoRa.beginPacket();
   LoRa.print(data);
   LoRa.endPacket();
+  return true;
 }
+
+ 
 
 // === AT Command Helper ===
 bool sendATCommand(String cmd, String resp, unsigned long timeout) {
-  Serial.print("Sending: "); Serial.println(cmd);
-  sim800l.println(cmd);
+  if (cmd != "") {
+    Serial.print("Sending: "); Serial.println(cmd);
+    sim800l.println(cmd);
+  }
 
   unsigned long start = millis();
   String response = "";

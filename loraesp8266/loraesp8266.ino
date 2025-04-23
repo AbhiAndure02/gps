@@ -1,22 +1,22 @@
-#include <WiFi.h>
-#include <WebServer.h>
+ #include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
 #include <SPI.h>
 #include <LoRa.h>
 
-// === LoRa Pins ===
-#define ss 5
-#define rst 14
-#define dio0 2
+// === LoRa Pins (adjust based on your ESP8266 wiring) ===
+#define ss 15    // GPIO15
+#define rst 16   // GPIO16
+#define dio0 5  // GPIO5
 
-// === Buzzer Pin ===
-#define BUZZER_PIN 26
+// === Buzzer Pin (adjust as needed) ===
+#define BUZZER_PIN 4  // GPIO4
 
 // === WiFi AP Credentials ===
 const char* apSSID = "LoRa_Receiver";
 const char* apPassword = "12345678";
 
 // === Web Server ===
-WebServer server(80);
+ESP8266WebServer server(80);
 
 // === LoRa Variables ===
 String lastLoRaMessage = "Waiting...";
@@ -30,7 +30,7 @@ bool manualBuzz = false;
 unsigned long manualBuzzStart = 0;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
@@ -41,13 +41,13 @@ void setup() {
 
   // Web Server Routes
   server.on("/", handleRoot);
-  server.on("/control", handleControlPage);  // NEW page with button
-  server.on("/buzz", handleBuzz);            // Trigger buzzer
+  server.on("/control", handleControlPage);
+  server.on("/buzz", HTTP_POST, handleBuzz);
   server.begin();
 
   // LoRa Setup
   LoRa.setPins(ss, rst, dio0);
-  while (!LoRa.begin(856E6)) {
+  while (!LoRa.begin(865E6)) {
     Serial.print(".");
     delay(500);
   }
@@ -89,11 +89,7 @@ void loop() {
     Serial.println("Message: " + lastLoRaMessage);
     Serial.println("RSSI: " + String(lastRSSI));
 
-    if (!buzzerActive) {
-      buzzerActive = true;
-      buzzerStartTime = millis();
-      digitalWrite(BUZZER_PIN, HIGH);
-    }
+
   }
 
   // LoRa message-based buzzer control
@@ -126,12 +122,13 @@ void handleRoot() {
   html += "<p><b>Last LoRa Message:</b> " + lastLoRaMessage + "</p>";
   html += "<p><b>Signal Strength (RSSI):</b> " + String(lastRSSI) + "</p>";
   html += "<p><b>Pending Buzzes:</b> " + String(messageCount) + "</p>";
+  html += "<p><a href='/control'><button>Go to Control Page</button></a></p>";
   html += "</body></html>";
 
   server.send(200, "text/html", html);
 }
 
-// === New /control Page with Button ===
+// === Control Page ===
 void handleControlPage() {
   String html = "<html><head><title>Control</title></head><body>";
   html += "<h2>Control Page</h2>";
@@ -144,13 +141,12 @@ void handleControlPage() {
   server.send(200, "text/html", html);
 }
 
-// === Buzzer Trigger ===
+// === Handle Buzzer Trigger ===
 void handleBuzz() {
   manualBuzz = true;
   manualBuzzStart = millis();
   digitalWrite(BUZZER_PIN, HIGH);
 
-  // Redirect back to control page
   server.sendHeader("Location", "/control");
   server.send(303);
 }

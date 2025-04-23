@@ -10,18 +10,15 @@
 #define BUZZER_PIN 26
 
 void setup() {
-  // Serial for debugging
   Serial.begin(115200);
   while (!Serial);
   Serial.println("LoRa Receiver with Buzzer");
 
-  // Set buzzer pin as output
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);  // Make sure buzzer is off initially
 
-  // Initialize LoRa
   LoRa.setPins(ss, rst, dio0);
-  while (!LoRa.begin(865E6)) { // Use 865E6 or 866E6 for India
+  while (!LoRa.begin(865E6)) {
     Serial.print(".");
     delay(500);
   }
@@ -33,27 +30,32 @@ void setup() {
 void loop() {
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
-    Serial.print("Received packet: ");
+    Serial.println(">> Packet Received <<");
 
     String LoRaData = "";
     while (LoRa.available()) {
       LoRaData += (char)LoRa.read();
     }
 
+    Serial.print("Message: ");
     Serial.println(LoRaData);
 
-    // Check command and activate buzzer
     if (LoRaData == "ON") {
-      digitalWrite(BUZZER_PIN, HIGH); // Turn on buzzer
+      digitalWrite(BUZZER_PIN, HIGH);
       Serial.println("Buzzer ON");
     } 
     else if (LoRaData == "OFF") {
-      digitalWrite(BUZZER_PIN, LOW); // Turn off buzzer
+      digitalWrite(BUZZER_PIN, HIGH);
       Serial.println("Buzzer OFF");
+    } else {
+      Serial.println("Unknown command.");
+            digitalWrite(BUZZER_PIN, HIGH);
+
     }
 
-    // Show RSSI
     Serial.print("RSSI: ");
     Serial.println(LoRa.packetRssi());
   }
+
+  delay(100); // Reduce CPU usage
 }

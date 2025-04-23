@@ -2,15 +2,15 @@
     #include <TinyGPS++.h>
     
     // GPS Setup
-    static const int GPS_RX = 4, GPS_TX = 5;
+    static const int GPS_RX = 15, GPS_TX = 4;
     SoftwareSerial gpsSerial(GPS_RX, GPS_TX);
     TinyGPSPlus gps;
     
     // SIM800L Setup
     SoftwareSerial sim800l(16, 17);
-    const int button = 27;
+    const int button = 26;
     
-    String phoneNumbers[] = { "+919881435328" };
+    String phoneNumbers[] = { "+919370718105" };
     int numNumbers = 1;
     
     unsigned long lastValidFixTime = 0;
